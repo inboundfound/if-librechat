@@ -54,15 +54,28 @@ export default function useWebsiteOptimizationIntent() {
       // Check for business/company context
       const hasBusinessContext = /\b(company|business|client|organization|brand)\b/.test(query);
 
+      // Check for traffic and reporting queries
+      const hasTrafficReportingIntent =
+        /\b(traffic|topics?|report|data|analytics|most.*traffic|generate.*traffic|top.*pages?|popular.*pages?|search.*terms?|keywords?|clicks?|impressions?)\b/.test(
+          query,
+        );
+
+      // Check for time-based analysis queries
+      const hasTimeBasedAnalysis =
+        /\b(last.*month|past.*month|this.*month|last.*week|past.*week|last.*quarter|past.*quarter|yesterday|today)\b/.test(
+          query,
+        );
+
       // Specific phrases that indicate Launch Guardian GSC analysis intent
       const hasSpecificIntent =
-        /\b(help optimize|analyze.*website|website.*optim|increase.*lead|lead.*generation|search console|gsc|google search|traffic analysis)\b/.test(
+        /\b(help optimize|analyze.*website|website.*optim|increase.*lead|lead.*generation|search console|gsc|google search|traffic analysis|show.*topics|topics.*traffic|generate.*most.*traffic)\b/.test(
           query,
         );
 
       const result =
         (hasWebsiteKeywords && hasOptimizationIntent) ||
         (hasBusinessContext && hasOptimizationIntent) ||
+        (hasTrafficReportingIntent && hasTimeBasedAnalysis) ||
         hasSpecificIntent;
 
       console.log('WebsiteOptimization: Intent Detection', {
@@ -71,6 +84,8 @@ export default function useWebsiteOptimizationIntent() {
         hasWebsiteKeywords,
         hasOptimizationIntent,
         hasBusinessContext,
+        hasTrafficReportingIntent,
+        hasTimeBasedAnalysis,
         hasSpecificIntent,
         result,
       });
@@ -118,5 +133,6 @@ export default function useWebsiteOptimizationIntent() {
     checkAndInterceptQuery,
     clearIntent,
     hasNeo4jServer: hasNeo4jServer(),
+    setIntentState,
   };
 }
