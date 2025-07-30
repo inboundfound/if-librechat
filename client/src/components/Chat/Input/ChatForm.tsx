@@ -17,6 +17,7 @@ import {
   useSubmitMessage,
   useFocusChatEffect,
 } from '~/hooks';
+import useWebsiteOptimizationIntent from '~/hooks/useWebsiteOptimizationIntent';
 import { mainTextareaId, BadgeItem } from '~/common';
 import AttachFileChat from './Files/AttachFileChat';
 import FileFormChat from './Files/FileFormChat';
@@ -32,6 +33,7 @@ import SendButton from './SendButton';
 import EditBadges from './EditBadges';
 import BadgeRow from './BadgeRow';
 import Mention from './Mention';
+import LaunchGuardianForm from './LaunchGuardianForm';
 import store from '~/store';
 
 const ChatForm = memo(({ index = 0 }: { index?: number }) => {
@@ -72,6 +74,9 @@ const ChatForm = memo(({ index = 0 }: { index?: number }) => {
     newConversation,
     handleStopGenerating,
   } = useChatContext();
+
+  // Website optimization intent detection
+  const { intentState, checkAndInterceptQuery, clearIntent } = useWebsiteOptimizationIntent();
   const {
     addedIndex,
     generateConversation,
@@ -130,6 +135,51 @@ const ChatForm = memo(({ index = 0 }: { index?: number }) => {
   });
 
   const { submitMessage, submitPrompt } = useSubmitMessage();
+
+  // Custom submit handler that checks for website optimization intent
+  const handleSubmitWithIntentCheck = useCallback(
+    (data: { text: string }) => {
+      if (!data?.text?.trim()) {
+        return;
+      }
+
+      // Check if this query should trigger the Launch Guardian GSC form
+      const shouldIntercept = checkAndInterceptQuery(data.text);
+
+      if (shouldIntercept) {
+        // Intent detected - the form will be shown via intentState
+        console.log('ChatForm: Website optimization intent detected, showing Launch Guardian form');
+        return; // Don't submit the message, show the form instead
+      }
+
+      // No intent detected, proceed with normal submission
+      submitMessage(data);
+    },
+    [checkAndInterceptQuery, submitMessage],
+  );
+
+  // Handle Launch Guardian form submission
+  const handleLaunchGuardianSubmit = useCallback(
+    (formattedQuery: string) => {
+      // Submit the formatted Launch Guardian query
+      submitMessage({ text: formattedQuery });
+      // Clear the intent state to hide the form
+      clearIntent();
+    },
+    [submitMessage, clearIntent],
+  );
+
+  // Handle canceling the Launch Guardian form
+  const handleLaunchGuardianCancel = useCallback(() => {
+    // Clear the intent state and proceed with normal chat
+    const originalQuery = intentState.originalQuery;
+    clearIntent();
+
+    if (originalQuery) {
+      // Submit the original query normally
+      submitMessage({ text: originalQuery });
+    }
+  }, [intentState.originalQuery, clearIntent, submitMessage]);
 
   const handleKeyUp = useHandleKeyUp({
     index,
@@ -202,9 +252,22 @@ const ChatForm = memo(({ index = 0 }: { index?: number }) => {
     [isCollapsed, isMoreThanThreeRows],
   );
 
+  // Show Launch Guardian form if website optimization intent is detected
+  if (intentState.shouldShowForm) {
+    return (
+      <div className="mx-auto w-full max-w-4xl px-2">
+        <LaunchGuardianForm
+          originalQuery={intentState.originalQuery}
+          onSubmit={handleLaunchGuardianSubmit}
+          onCancel={handleLaunchGuardianCancel}
+        />
+      </div>
+    );
+  }
+
   return (
     <form
-      onSubmit={methods.handleSubmit(submitMessage)}
+      onSubmit={methods.handleSubmit(handleSubmitWithIntentCheck)}
       className={cn(
         'mx-auto flex w-full flex-row gap-3 transition-[max-width] duration-300 sm:px-2',
         maximizeChatSpace ? 'max-w-full' : 'md:max-w-3xl xl:max-w-4xl',

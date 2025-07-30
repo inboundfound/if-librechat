@@ -9,6 +9,7 @@ import CustomUserVarsSection from '~/components/ui/MCP/CustomUserVarsSection';
 import { useMCPConnectionStatusQuery } from '~/data-provider/Tools/queries';
 import { useGetStartupConfig } from '~/data-provider';
 import MCPPanelSkeleton from './MCPPanelSkeleton';
+import Neo4jServerPanel from './Neo4jServerPanel';
 import { useToastContext } from '~/Providers';
 import { Button } from '~/components/ui';
 import { useLocalize } from '~/hooks';
@@ -109,7 +110,14 @@ export default function MCPPanel() {
   }
 
   if (selectedServerNameForEditing) {
-    // Editing View
+    // Check if this is the neo4j_server - use custom panel
+    if (selectedServerNameForEditing === 'neo4j_server') {
+      return (
+        <Neo4jServerPanel serverName={selectedServerNameForEditing} onBack={handleGoBackToList} />
+      );
+    }
+
+    // Editing View for other servers
     const serverBeingEdited = mcpServerDefinitions.find(
       (s) => s.serverName === selectedServerNameForEditing,
     );
