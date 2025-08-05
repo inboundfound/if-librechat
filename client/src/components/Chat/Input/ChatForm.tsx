@@ -17,7 +17,7 @@ import {
   useSubmitMessage,
   useFocusChatEffect,
 } from '~/hooks';
-import useWebsiteOptimizationIntent from '~/hooks/useWebsiteOptimizationIntent';
+import useLaunchGuardianGSC from '~/hooks/useLaunchGuardianGSC';
 import { mainTextareaId, BadgeItem } from '~/common';
 import AttachFileChat from './Files/AttachFileChat';
 import FileFormChat from './Files/FileFormChat';
@@ -33,7 +33,7 @@ import SendButton from './SendButton';
 import EditBadges from './EditBadges';
 import BadgeRow from './BadgeRow';
 import Mention from './Mention';
-import LaunchGuardianForm from './LaunchGuardianForm';
+
 import store from '~/store';
 
 const ChatForm = memo(({ index = 0 }: { index?: number }) => {
@@ -75,9 +75,8 @@ const ChatForm = memo(({ index = 0 }: { index?: number }) => {
     handleStopGenerating,
   } = useChatContext();
 
-  // Website optimization intent detection
-  const { intentState, checkAndInterceptQuery, clearIntent, hasNeo4jServer, setIntentState } =
-    useWebsiteOptimizationIntent();
+  // Launch Guardian GSC integration (AI-driven)
+  const { triggerGSCForm, hasNeo4jServer } = useLaunchGuardianGSC();
   const {
     addedIndex,
     generateConversation,
@@ -138,49 +137,13 @@ const ChatForm = memo(({ index = 0 }: { index?: number }) => {
   const { submitMessage, submitPrompt } = useSubmitMessage();
 
   // Custom submit handler that checks for website optimization intent
-  const handleSubmitWithIntentCheck = useCallback(
-    (data: { text: string }) => {
-      if (!data?.text?.trim()) {
-        return;
-      }
-
-      // Check if this query should trigger the Launch Guardian GSC form
-      const shouldIntercept = checkAndInterceptQuery(data.text);
-
-      if (shouldIntercept) {
-        // Intent detected - the form will be shown via intentState
-        console.log('ChatForm: Website optimization intent detected, showing Launch Guardian form');
-        return; // Don't submit the message, show the form instead
-      }
-
-      // No intent detected, proceed with normal submission
-      submitMessage(data);
-    },
-    [checkAndInterceptQuery, submitMessage],
-  );
-
-  // Handle Launch Guardian form submission
-  const handleLaunchGuardianSubmit = useCallback(
-    (formattedQuery: string) => {
-      // Submit the formatted Launch Guardian query
-      submitMessage({ text: formattedQuery });
-      // Clear the intent state to hide the form
-      clearIntent();
-    },
-    [submitMessage, clearIntent],
-  );
-
-  // Handle canceling the Launch Guardian form
-  const handleLaunchGuardianCancel = useCallback(() => {
-    // Clear the intent state and proceed with normal chat
-    const originalQuery = intentState.originalQuery;
-    clearIntent();
-
-    if (originalQuery) {
-      // Submit the original query normally
-      submitMessage({ text: originalQuery });
+  // Handle manual Launch Guardian GSC trigger
+  const handleLaunchGuardianTrigger = useCallback(() => {
+    const success = triggerGSCForm('Manual Launch Guardian GSC Analysis Request');
+    if (!success) {
+      console.warn('Launch Guardian GSC: Cannot trigger - neo4j_server not available');
     }
-  }, [intentState.originalQuery, clearIntent, submitMessage]);
+  }, [triggerGSCForm]);
 
   const handleKeyUp = useHandleKeyUp({
     index,
@@ -254,21 +217,12 @@ const ChatForm = memo(({ index = 0 }: { index?: number }) => {
   );
 
   // Show Launch Guardian form if website optimization intent is detected
-  if (intentState.shouldShowForm) {
-    return (
-      <div className="mx-auto w-full max-w-4xl px-2">
-        <LaunchGuardianForm
-          originalQuery={intentState.originalQuery}
-          onSubmit={handleLaunchGuardianSubmit}
-          onCancel={handleLaunchGuardianCancel}
-        />
-      </div>
-    );
-  }
+  // The AI-driven GSC form is now handled in MessageContent component
+  // No need for explicit form rendering here
 
   return (
     <form
-      onSubmit={methods.handleSubmit(handleSubmitWithIntentCheck)}
+      onSubmit={methods.handleSubmit(submitMessage)}
       className={cn(
         'mx-auto flex w-full flex-row gap-3 transition-[max-width] duration-300 sm:px-2',
         maximizeChatSpace ? 'max-w-full' : 'md:max-w-3xl xl:max-w-4xl',
@@ -363,13 +317,7 @@ const ChatForm = memo(({ index = 0 }: { index?: number }) => {
               <div className="flex px-5 py-2">
                 <button
                   type="button"
-                  onClick={() => {
-                    setIntentState({
-                      shouldShowForm: true,
-                      originalQuery: 'Launch Guardian GSC Data Analysis',
-                      conversationId: conversation?.conversationId || undefined,
-                    });
-                  }}
+                  onClick={handleLaunchGuardianTrigger}
                   disabled={disableInputs}
                   className="flex items-center gap-2 rounded-lg bg-surface-secondary px-4 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-surface-hover focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50 disabled:cursor-not-allowed disabled:opacity-50"
                   title="Launch Guardian GSC Data Analysis"

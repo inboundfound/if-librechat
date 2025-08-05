@@ -1,4 +1,4 @@
-import { memo, Suspense, useMemo } from 'react';
+import { memo, Suspense, useMemo, useState, useEffect } from 'react';
 import { useRecoilValue } from 'recoil';
 import type { TMessage } from 'librechat-data-provider';
 import type { TMessageContentProps, TDisplayProps } from '~/common';
@@ -12,7 +12,10 @@ import { useLocalize } from '~/hooks';
 import Container from './Container';
 import Markdown from './Markdown';
 import { cn } from '~/utils';
-import store from '~/store';
+import store, { ephemeralAgentByConvoId } from '~/store';
+import { Constants } from 'librechat-data-provider';
+import LaunchGuardianGSCTool from './LaunchGuardianGSCTool';
+import { parseAIResponseForGSC, isGSCAnalysisAvailable } from '~/utils/aiGSCDetection';
 
 export const ErrorMessage = ({
   text,
@@ -70,8 +73,51 @@ export const ErrorMessage = ({
 };
 
 const DisplayMessage = ({ text, isCreatedByUser, message, showCursor }: TDisplayProps) => {
-  const { isSubmitting, latestMessage } = useChatContext();
+  console.log('🟢 DisplayMessage COMPONENT LOADED', {
+    messageId: message.messageId,
+    isCreatedByUser,
+    messageEndpoint: message.endpoint,
+    textPreview: text?.substring(0, 200),
+    messageContent: message.content,
+    messageType: typeof message,
+    hasText: !!text,
+    textLength: text?.length || 0,
+  });
+
+  const { isSubmitting, latestMessage, conversation } = useChatContext();
   const enableUserMsgMarkdown = useRecoilValue(store.enableUserMsgMarkdown);
+  const [showGSCTool, setShowGSCTool] = useState(false);
+  const [gscRequestContext, setGscRequestContext] = useState<string>();
+  const [cleanedText, setCleanedText] = useState(text);
+
+  const conversationKey = conversation?.conversationId ?? Constants.NEW_CONVO;
+  const ephemeralAgent = useRecoilValue(ephemeralAgentByConvoId(conversationKey));
+
+  // COMPREHENSIVE DEBUGGING - Track all messages
+  console.log('🔍 DisplayMessage: EVERY MESSAGE', {
+    messageId: message.messageId,
+    isCreatedByUser,
+    messageIsCreatedByUser: message.isCreatedByUser,
+    textPreview: text?.substring(0, 100),
+    textLength: text?.length || 0,
+    timestamp: new Date().toISOString(),
+    messageType: isCreatedByUser ? 'USER' : 'AI',
+  });
+
+  // Special logging for AI messages
+  if (!isCreatedByUser && text) {
+    console.log('🤖 AI MESSAGE DETECTED IN DISPLAY:', {
+      messageId: message.messageId,
+      textLength: text.length,
+      textPreview: text.substring(0, 200),
+      containsTriggerPhrase: text
+        .toLowerCase()
+        .includes('let me get some details about your website'),
+      containsAnalyze: text.toLowerCase().includes('analyze'),
+      containsWebsite: text.toLowerCase().includes('website'),
+    });
+  }
+
   const showCursorState = useMemo(
     () => showCursor === true && isSubmitting,
     [showCursor, isSubmitting],
@@ -81,13 +127,112 @@ const DisplayMessage = ({ text, isCreatedByUser, message, showCursor }: TDisplay
     [message.messageId, latestMessage?.messageId],
   );
 
+  // Check if GSC analysis is available
+  const isGSCAvailable = useMemo(() => {
+    return isGSCAnalysisAvailable(ephemeralAgent?.mcp || []);
+  }, [ephemeralAgent?.mcp]);
+
+  // Simplified AI-driven GSC detection - check all messages
+  useEffect(() => {
+    console.log('🚨 AI-driven GSC: DETECTION CHECK STARTING', {
+      messageId: message.messageId,
+      isCreatedByUser,
+      hasText: !!text,
+      textPreview: text?.substring(0, 200),
+      fullText: text,
+      isGSCAvailable,
+      mcpServers: ephemeralAgent?.mcp,
+      messageIsCreatedByUser: message.isCreatedByUser,
+      messageEndpoint: message.endpoint,
+      textContainsLaunchGuardian: text?.toLowerCase().includes('launch guardian'),
+      textContainsGSC: text?.toLowerCase().includes('gsc'),
+      textContainsAnalysis: text?.toLowerCase().includes('analysis'),
+      textContainsSure: text?.toLowerCase().includes('sure'),
+      textContainsTellMe: text?.toLowerCase().includes('tell me'),
+      textContainsWebsite: text?.toLowerCase().includes('website'),
+    });
+
+    // Only process AI messages with text
+    if (isCreatedByUser || !text) {
+      console.log('AI-driven GSC: Skipping detection', {
+        reason: isCreatedByUser ? 'user message' : 'no text',
+        isCreatedByUser,
+        hasText: !!text,
+      });
+      setShowGSCTool(false);
+      setCleanedText(text);
+      return;
+    }
+
+    console.log('🚀 AI-driven GSC: Processing AI message', {
+      messageId: message.messageId,
+      isCreatedByUser,
+      textLength: text.length,
+      textPreview: text.substring(0, 200),
+    });
+
+    // Check if GSC is available
+    if (!isGSCAvailable) {
+      console.log('AI-driven GSC: GSC not available', {
+        mcpServers: ephemeralAgent?.mcp,
+        isGSCAvailable,
+      });
+      setShowGSCTool(false);
+      setCleanedText(text);
+      return;
+    }
+
+    // Perform GSC detection on AI messages
+    console.log('🚀 AI-driven GSC: CALLING parseAIResponseForGSC', {
+      textLength: text.length,
+      textPreview: text.substring(0, 300),
+    });
+    const gscDetection = parseAIResponseForGSC(text);
+    console.log('📝 AI-driven GSC: parseAIResponseForGSC RETURNED', gscDetection);
+
+    console.log('AI-driven GSC: Detection result', {
+      messageId: message.messageId,
+      shouldShowTool: gscDetection.shouldShowTool,
+      requestContext: gscDetection.requestContext,
+      textAnalyzed: text?.substring(0, 200),
+    });
+
+    if (gscDetection.shouldShowTool) {
+      setShowGSCTool(true);
+      setGscRequestContext(gscDetection.requestContext);
+      setCleanedText(gscDetection.cleanedResponse || text);
+
+      console.log('AI-driven GSC: Tool triggered by AI response', {
+        messageId: message.messageId,
+        requestContext: gscDetection.requestContext,
+        hasCleanedResponse: !!gscDetection.cleanedResponse,
+      });
+    } else {
+      setShowGSCTool(false);
+      setCleanedText(text);
+    }
+  }, [
+    text,
+    isCreatedByUser,
+    isGSCAvailable,
+    message.messageId,
+    ephemeralAgent?.mcp,
+    message.isCreatedByUser,
+  ]);
+
+  // Handle GSC tool closure
+  const handleGSCToolClose = () => {
+    setShowGSCTool(false);
+    setGscRequestContext(undefined);
+  };
+
   let content: React.ReactElement;
   if (!isCreatedByUser) {
-    content = <Markdown content={text} isLatestMessage={isLatestMessage} />;
+    content = <Markdown content={cleanedText} isLatestMessage={isLatestMessage} />;
   } else if (enableUserMsgMarkdown) {
-    content = <MarkdownLite content={text} />;
+    content = <MarkdownLite content={cleanedText} />;
   } else {
-    content = <>{text}</>;
+    content = <>{cleanedText}</>;
   }
 
   return (
@@ -95,7 +240,7 @@ const DisplayMessage = ({ text, isCreatedByUser, message, showCursor }: TDisplay
       <div
         className={cn(
           isSubmitting ? 'submitting' : '',
-          showCursorState && !!text.length ? 'result-streaming' : '',
+          showCursorState && !!cleanedText.length ? 'result-streaming' : '',
           'markdown prose message-content dark:prose-invert light w-full break-words',
           isCreatedByUser && !enableUserMsgMarkdown && 'whitespace-pre-wrap',
           isCreatedByUser ? 'dark:text-gray-20' : 'dark:text-gray-100',
@@ -103,6 +248,11 @@ const DisplayMessage = ({ text, isCreatedByUser, message, showCursor }: TDisplay
       >
         {content}
       </div>
+
+      {/* AI-driven Launch Guardian GSC Tool */}
+      {showGSCTool && !isCreatedByUser && (
+        <LaunchGuardianGSCTool requestContext={gscRequestContext} onClose={handleGSCToolClose} />
+      )}
     </Container>
   );
 };

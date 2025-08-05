@@ -1,22 +1,34 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useRecoilValue } from 'recoil';
 import type { TMessageContentParts } from 'librechat-data-provider';
 import type { TMessageProps, TMessageIcon } from '~/common';
-import { useMessageHelpers, useLocalize, useAttachments } from '~/hooks';
+import { useMessageHelpers, useLocalize, useAttachments, useMessageActions } from '~/hooks';
 import MessageIcon from '~/components/Chat/Messages/MessageIcon';
 import ContentParts from './Content/ContentParts';
 import SiblingSwitch from './SiblingSwitch';
-
 import MultiMessage from './MultiMessage';
 import HoverButtons from './HoverButtons';
 import SubRow from './SubRow';
 import { cn } from '~/utils';
 import store from '~/store';
+import { parseAIResponseForGSC, isGSCAnalysisAvailable } from '~/utils/aiGSCDetection';
+import LaunchGuardianGSCTool from './Content/LaunchGuardianGSCTool';
+import { ephemeralAgentByConvoId } from '~/store/agents';
 
 export default function Message(props: TMessageProps) {
   const localize = useLocalize();
   const { message, siblingIdx, siblingCount, setSiblingIdx, currentEditId, setCurrentEditId } =
     props;
+
+  // Debug: Log when MessageParts component loads
+  console.log('🔵 MessageParts COMPONENT LOADED', {
+    messageId: message?.messageId,
+    isCreatedByUser: message?.isCreatedByUser,
+    endpoint: message?.endpoint,
+    textPreview: message?.text?.substring(0, 200),
+    messageContent: message?.content,
+    timestamp: new Date().toISOString(),
+  });
   const { attachments, searchResults } = useAttachments({
     messageId: message?.messageId,
     attachments: message?.attachments,
@@ -37,9 +49,96 @@ export default function Message(props: TMessageProps) {
     regenerateMessage,
   } = useMessageHelpers(props);
 
+  const { handleFeedback } = useMessageActions({
+    message,
+    currentEditId,
+    setCurrentEditId,
+  });
+
   const fontSize = useRecoilValue(store.fontSize);
   const maximizeChatSpace = useRecoilValue(store.maximizeChatSpace);
   const { children, messageId = null, isCreatedByUser } = message ?? {};
+
+  // GSC Detection State
+  const [showGSCTool, setShowGSCTool] = useState(false);
+  const [gscRequestContext, setGscRequestContext] = useState<string>();
+  const conversationKey = conversation?.conversationId ?? 'new';
+  const ephemeralAgent = useRecoilValue(ephemeralAgentByConvoId(conversationKey));
+
+  // Check if GSC is available
+  const isGSCAvailable = useMemo(() => {
+    const available = isGSCAnalysisAvailable(ephemeralAgent?.mcp || []);
+    console.log('🔍 MessageParts: GSC Availability Check', {
+      available,
+      mcpServers: ephemeralAgent?.mcp,
+      mcpCount: ephemeralAgent?.mcp?.length || 0,
+      conversationKey,
+    });
+    return available;
+  }, [ephemeralAgent?.mcp, conversationKey]);
+
+  // AI-driven GSC detection for AI messages
+  useEffect(() => {
+    if (!message) {
+      setShowGSCTool(false);
+      return;
+    }
+
+    console.log('🔍 MessageParts: Processing message', {
+      messageId: message.messageId,
+      isCreatedByUser,
+      messageText: message.text?.substring(0, 100),
+      isGSCAvailable,
+      timestamp: new Date().toISOString(),
+    });
+
+    // Only process AI messages with text
+    if (isCreatedByUser || !message.text || !isGSCAvailable) {
+      console.log('🔍 MessageParts: Skipping GSC detection', {
+        reason: isCreatedByUser ? 'user message' : !message.text ? 'no text' : 'GSC not available',
+        isCreatedByUser,
+        hasText: !!message.text,
+        isGSCAvailable,
+      });
+      setShowGSCTool(false);
+      return;
+    }
+
+    // Process AI message for GSC detection
+    console.log('🤖 MessageParts: Processing AI message for GSC');
+    const gscDetection = parseAIResponseForGSC(message.text);
+
+    console.log('🔍 MessageParts: GSC Detection result', {
+      messageId: message.messageId,
+      shouldShowTool: gscDetection.shouldShowTool,
+      requestContext: gscDetection.requestContext,
+      textAnalyzed: message.text.substring(0, 200),
+    });
+
+    if (gscDetection.shouldShowTool) {
+      setShowGSCTool(true);
+      setGscRequestContext(gscDetection.requestContext);
+      console.log('✅ MessageParts: GSC Tool triggered!', {
+        messageId: message.messageId,
+        requestContext: gscDetection.requestContext,
+      });
+    } else {
+      setShowGSCTool(false);
+    }
+  }, [
+    message?.text,
+    isCreatedByUser,
+    isGSCAvailable,
+    message?.messageId,
+    ephemeralAgent?.mcp,
+    message,
+  ]);
+
+  // Handle GSC tool closure
+  const handleGSCToolClose = () => {
+    setShowGSCTool(false);
+    setGscRequestContext(undefined);
+  };
 
   const name = useMemo(() => {
     let result = '';
@@ -84,6 +183,15 @@ export default function Message(props: TMessageProps) {
       ? 'w-full max-w-full md:px-5 lg:px-1 xl:px-5'
       : 'md:max-w-[47rem] xl:max-w-[55rem]',
   };
+
+  // Add debugging to track MessageParts usage
+  console.log('🔵 MessageParts COMPONENT LOADED', {
+    messageId: message.messageId,
+    isCreatedByUser: message.isCreatedByUser,
+    endpoint: message.endpoint,
+    content: message.content,
+    textPreview: message.text?.substring(0, 100) || 'no text',
+  });
 
   return (
     <>
@@ -150,6 +258,7 @@ export default function Message(props: TMessageProps) {
                       handleContinue={handleContinue}
                       latestMessage={latestMessage}
                       isLast={isLast}
+                      handleFeedback={handleFeedback}
                     />
                   </SubRow>
                 )}
@@ -158,6 +267,14 @@ export default function Message(props: TMessageProps) {
           </div>
         </div>
       </div>
+
+      {/* AI-driven GSC Tool - Show for AI messages when detected */}
+      {showGSCTool && !isCreatedByUser && (
+        <div className="mx-auto px-4 md:max-w-[47rem] xl:max-w-[55rem]">
+          <LaunchGuardianGSCTool requestContext={gscRequestContext} onClose={handleGSCToolClose} />
+        </div>
+      )}
+
       <MultiMessage
         key={messageId}
         messageId={messageId}
