@@ -3,8 +3,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Constants, QueryKeys } from 'librechat-data-provider';
 import type { TUpdateUserPlugins } from 'librechat-data-provider';
 import { useUpdateUserPluginsMutation } from 'librechat-data-provider/react-query';
-import { Label, Input, Button } from '~/components/ui';
-import { useToastContext } from '~/Providers';
+import { Label, Input, Button } from '@librechat/client';
+import { useToastContext } from '@librechat/client';
 import { useLocalize } from '~/hooks';
 
 interface Neo4jServerPanelProps {
