@@ -12,8 +12,6 @@ import BadgeRowProvider from '~/Providers/BadgeRowContext';
 import { useGetStartupConfig } from '~/data-provider';
 import MCPPanelSkeleton from './MCPPanelSkeleton';
 import Neo4jServerPanel from './Neo4jServerPanel';
-import { useToastContext } from '~/Providers';
-import { Button } from '~/components/ui';
 import { useLocalize } from '~/hooks';
 
 function MCPPanelContent() {

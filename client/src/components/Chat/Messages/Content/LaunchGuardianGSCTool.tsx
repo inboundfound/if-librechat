@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Label, Input, Button } from '~/components/ui';
+import { Label, Input, Button } from '@librechat/client';
 import { useChatContext } from '~/Providers';
 import { useSubmitMessage } from '~/hooks';
 
