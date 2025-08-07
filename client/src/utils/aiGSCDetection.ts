@@ -112,19 +112,26 @@ export function parseAIResponseForGSC(aiResponse: string): GSCToolRequest {
   const testPhrases = [
     'launch guardian currently contains',
     'launch guardian can hold data',
+    'launch guardian stores google search console',
     'google search console data',
     'google search console (gsc)',
+    'google search console (gsc) data',
     'following sites:',
     'which website (domain',
     'gsc property',
     'inboundfound.com',
     'ultravioletagency.com',
     'two quick details before',
+    'to get started i\'ll need two things',
+    'to get started i need two things',
     'run an analysis',
     'has data for multiple sites',
     "which property you'd like to analyze",
+    'the exact property (url or domain)',
     'for example:',
     'www.example.org',
+    'sc-domain:example.com',
+    'https://www.example.com',
   ];
 
   console.log('🔍 parseAIResponseForGSC: Testing phrases...');

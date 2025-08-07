@@ -122,8 +122,29 @@ const ContentRender = memo(
       timestamp: new Date().toISOString(),
     });
 
+    // Debug: Log extracted message text details
+    console.log('🟠 ContentRender TEXT EXTRACTION DEBUG', {
+      messageId: msg?.messageId,
+      extractedText: messageText,
+      extractedTextLength: messageText.length,
+      hasExtractedText: !!messageText,
+      messageHasText: !!msg?.text,
+      messageHasContent: !!msg?.content,
+      contentType: typeof msg?.content,
+      contentIsArray: Array.isArray(msg?.content),
+      contentLength: Array.isArray(msg?.content) ? msg?.content.length : 'N/A',
+    });
+
     // AI-driven GSC detection logic
     useEffect(() => {
+      console.log('🚨 ContentRender GSC DETECTION USEEFFECT TRIGGERED', {
+        messageId: msg?.messageId,
+        messageTextLength: messageText.length,
+        isCreatedByUser: msg?.isCreatedByUser,
+        triggerGSCFormExists: !!triggerGSCForm,
+        extractMessageTextExists: !!extractMessageText,
+      });
+      
       const text = messageText;
 
       console.log('🟠 ContentRender GSC DETECTION', {
@@ -166,7 +187,7 @@ const ContentRender = memo(
       }
 
       setCleanedText(gscDetection.cleanedResponse || text);
-    }, [messageText, msg?.isCreatedByUser, msg?.messageId, triggerGSCForm, extractMessageText]);
+    }, [messageText, msg?.isCreatedByUser, msg?.messageId, triggerGSCForm]);
 
     const handleRegenerateMessage = useCallback(() => regenerateMessage(), [regenerateMessage]);
     const isLast = useMemo(
