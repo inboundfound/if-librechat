@@ -134,7 +134,7 @@ const DisplayMessage = ({ text, isCreatedByUser, message, showCursor }: TDisplay
 
   // Simplified AI-driven GSC detection - check all messages
   useEffect(() => {
-    console.log('🚨 AI-driven GSC: DETECTION CHECK STARTING', {
+    console.log('🚨🚨🚨 MessageContent GSC DETECTION USEEFFECT TRIGGERED 🚨🚨🚨', {
       messageId: message.messageId,
       isCreatedByUser,
       hasText: !!text,
@@ -216,6 +216,7 @@ const DisplayMessage = ({ text, isCreatedByUser, message, showCursor }: TDisplay
     isCreatedByUser,
     isGSCAvailable,
     message.messageId,
+    message.endpoint,
     ephemeralAgent?.mcp,
     message.isCreatedByUser,
   ]);
@@ -249,10 +250,10 @@ const DisplayMessage = ({ text, isCreatedByUser, message, showCursor }: TDisplay
         {content}
       </div>
 
-      {/* AI-driven Launch Guardian GSC Tool */}
-      {showGSCTool && !isCreatedByUser && (
+      {/* AI-driven Launch Guardian GSC Tool - DISABLED to prevent duplicates, handled by ContentRender */}
+      {/* {showGSCTool && !isCreatedByUser && (
         <LaunchGuardianGSCTool requestContext={gscRequestContext} onClose={handleGSCToolClose} />
-      )}
+      )} */}
     </Container>
   );
 };
@@ -276,6 +277,16 @@ const MessageContent = ({
 }: TMessageContentProps) => {
   const { message } = props;
   const { messageId } = message;
+
+  console.log('🔵 MessageContent COMPONENT LOADED', {
+    messageId,
+    hasText: !!text,
+    textLength: text?.length || 0,
+    textPreview: text?.substring(0, 100),
+    isCreatedByUser: message.isCreatedByUser,
+    hasError: !!error,
+    hasEdit: !!edit,
+  });
 
   const { thinkingContent, regularContent } = useMemo(() => {
     const thinkingMatch = text.match(/:::thinking([\s\S]*?):::/);
@@ -304,6 +315,15 @@ const MessageContent = ({
   } else if (edit) {
     return <EditMessage text={text} isSubmitting={isSubmitting} {...props} />;
   }
+
+  console.log('🔵 MessageContent ABOUT TO RENDER DisplayMessage', {
+    messageId,
+    hasThinkingContent: thinkingContent.length > 0,
+    hasRegularContent: !!regularContent,
+    regularContentLength: regularContent?.length || 0,
+    regularContentPreview: regularContent?.substring(0, 100),
+    showRegularCursor,
+  });
 
   return (
     <>

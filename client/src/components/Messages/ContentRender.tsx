@@ -69,7 +69,7 @@ const ContentRender = memo(
     // AI-driven GSC detection state
     const [showGSCTool, setShowGSCTool] = useState(false);
     const [gscRequestContext, setGscRequestContext] = useState('');
-    const [cleanedText, setCleanedText] = useState('');
+    const [_cleanedText, setCleanedText] = useState('');
     const { triggerGSCForm } = useLaunchGuardianGSC();
 
     // Extract text content from message (AI messages use content array, user messages use text)
@@ -137,14 +137,17 @@ const ContentRender = memo(
 
     // AI-driven GSC detection logic
     useEffect(() => {
-      console.log('🚨 ContentRender GSC DETECTION USEEFFECT TRIGGERED', {
+      console.log('🚨🚨🚨 ContentRender GSC DETECTION USEEFFECT TRIGGERED 🚨🚨🚨', {
         messageId: msg?.messageId,
         messageTextLength: messageText.length,
         isCreatedByUser: msg?.isCreatedByUser,
         triggerGSCFormExists: !!triggerGSCForm,
         extractMessageTextExists: !!extractMessageText,
+        messageTextPreview: messageText.substring(0, 100),
+        componentName: 'ContentRender',
+        timestamp: new Date().toISOString(),
       });
-      
+
       const text = messageText;
 
       console.log('🟠 ContentRender GSC DETECTION', {
@@ -168,6 +171,11 @@ const ContentRender = memo(
       console.log('🟠 ContentRender: Processing AI message for GSC detection');
 
       // Parse AI response for GSC detection
+      console.log('🟠 ContentRender: CALLING parseAIResponseForGSC with text:', {
+        textLength: text.length,
+        textPreview: text.substring(0, 300),
+        fullText: text,
+      });
       const gscDetection = parseAIResponseForGSC(text);
 
       console.log('🟠 ContentRender GSC DETECTION RESULT', {
@@ -175,6 +183,7 @@ const ContentRender = memo(
         requestContext: gscDetection.requestContext,
         cleanedResponse: gscDetection.cleanedResponse?.substring(0, 200),
         messageId: msg?.messageId,
+        detectionDetails: gscDetection,
       });
 
       if (gscDetection.shouldShowTool) {
@@ -187,7 +196,7 @@ const ContentRender = memo(
       }
 
       setCleanedText(gscDetection.cleanedResponse || text);
-    }, [messageText, msg?.isCreatedByUser, msg?.messageId, triggerGSCForm]);
+    }, [messageText, msg?.isCreatedByUser, msg?.messageId, triggerGSCForm, extractMessageText]);
 
     const handleRegenerateMessage = useCallback(() => regenerateMessage(), [regenerateMessage]);
     const isLast = useMemo(
@@ -344,6 +353,9 @@ const ContentRender = memo(
               </SubRow>
             )}
           </div>
+
+          {/* AI-driven Launch Guardian GSC Tool - REMOVED DUPLICATE */}
+          {/* Duplicate GSC form removed - already rendered above in the main content area */}
         </div>
       </div>
     );

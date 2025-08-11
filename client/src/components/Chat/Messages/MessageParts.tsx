@@ -268,12 +268,12 @@ export default function Message(props: TMessageProps) {
         </div>
       </div>
 
-      {/* AI-driven GSC Tool - Show for AI messages when detected */}
-      {showGSCTool && !isCreatedByUser && (
+      {/* AI-driven GSC Tool - DISABLED to prevent duplicates, handled by ContentRender */}
+      {/* {showGSCTool && !isCreatedByUser && (
         <div className="mx-auto px-4 md:max-w-[47rem] xl:max-w-[55rem]">
           <LaunchGuardianGSCTool requestContext={gscRequestContext} onClose={handleGSCToolClose} />
         </div>
-      )}
+      )} */}
 
       <MultiMessage
         key={messageId}
