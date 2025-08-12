@@ -1,3 +1,4 @@
+const axios = require('axios');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { webcrypto } = require('node:crypto');
@@ -374,7 +375,28 @@ const setAuthTokens = async (userId, res, sessionId = null) => {
       session = result.session;
       refreshToken = result.refreshToken;
       refreshTokenExpires = session.expiration.getTime();
+      console.log('token data', result)
     }
+
+    // Get LG auth token
+    const lgAuthData = await getLgAuthToken(token);
+    if (lgAuthData && lgAuthData.token) {
+      logger.debug('[setAuthTokens] Setting LG auth token cookie');
+      res.cookie('lgAuthToken', lgAuthData.token, {
+        expires: new Date(refreshTokenExpires),
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: 'strict',
+      });
+      res.cookie('lg_token_provider', 'lg_auth', {
+        expires: new Date(refreshTokenExpires),
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: 'strict',
+      });
+    }
+
+    console.log('lg auth token', lgAuthData)
 
     res.cookie('refreshToken', refreshToken, {
       expires: new Date(refreshTokenExpires),
@@ -513,6 +535,24 @@ const generateShortLivedToken = (userId, expireIn = '5m') => {
   });
 };
 
+const getLgAuthToken = async (token) => {
+  try {
+    const response = await axios.post('http://[::1]:5040/mcp-auth/token', {}, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    logger.debug('[getLgAuthToken] Successfully retrieved LG auth token');
+    return response.data;
+  } catch (error) {
+    logger.error('[getLgAuthToken] Error retrieving LG auth token:', error.message);
+    // Don't throw error to avoid breaking the main auth flow
+    return null;
+  }
+}
+
 module.exports = {
   logoutUser,
   verifyEmail,
@@ -523,4 +563,5 @@ module.exports = {
   requestPasswordReset,
   resendVerificationEmail,
   generateShortLivedToken,
+  getLgAuthToken,
 };
