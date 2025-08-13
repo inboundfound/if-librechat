@@ -3,20 +3,23 @@ import { Button } from '@librechat/client';
 import { useMCPSelect } from '~/hooks/Plugins/useMCPSelect';
 import { useChatContext } from '~/Providers';
 
-function LGWebsiteCrawlButton() {
+interface LGWebsiteCrawlButtonProps {
+  onToggleForm?: () => void;
+}
+
+function LGWebsiteCrawlButton({ onToggleForm }: LGWebsiteCrawlButtonProps) {
   const { conversation } = useChatContext();
   const { mcpValues } = useMCPSelect({ conversationId: conversation?.conversationId });
 
   // Check if neo4j_server is selected
   const isNeo4jServerSelected = mcpValues?.includes('neo4j_server') || false;
 
-  // Handler for the "Run LG Old Website Crawl" button
+  // Handler for opening the form
   const handleRunLGOldWebsiteCrawl = useCallback(() => {
-    // TODO: Implement the actual crawl functionality
-    console.log('Running LG Old Website Crawl...');
-    // This is where you would implement the actual crawl logic
-    // For now, just log to console
-  }, []);
+    if (onToggleForm) {
+      onToggleForm();
+    }
+  }, [onToggleForm]);
 
   if (!isNeo4jServerSelected) {
     return null;
