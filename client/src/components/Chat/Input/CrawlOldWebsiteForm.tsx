@@ -48,12 +48,8 @@ const CrawlOldWebsiteForm: React.FC<CrawlOldWebsiteFormProps> = ({
     onClose();
   }, [onClose]);
 
-  if (!isVisible) {
-    return null;
-  }
-
   return (
-    <div className="mx-auto mb-6 w-full max-w-2xl rounded-2xl bg-gray-800 shadow-2xl">
+    <div className="mx-auto mb-4 w-full max-w-2xl rounded-lg bg-surface-secondary border border-border-medium shadow-sm">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-gray-700 p-6">
         <h2 className="text-xl font-semibold text-white">Crawl Old Website</h2>

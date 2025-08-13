@@ -2,24 +2,20 @@ import React, { memo, useCallback } from 'react';
 import { Button } from '@librechat/client';
 import { useMCPSelect } from '~/hooks/Plugins/useMCPSelect';
 import { useChatContext } from '~/Providers';
+import { useCrawlFormContext } from '../CrawlFormContext';
 
-interface LGWebsiteCrawlButtonProps {
-  onToggleForm?: () => void;
-}
-
-function LGWebsiteCrawlButton({ onToggleForm }: LGWebsiteCrawlButtonProps) {
+function LGWebsiteCrawlButton() {
   const { conversation } = useChatContext();
   const { mcpValues } = useMCPSelect({ conversationId: conversation?.conversationId });
+  const { handleToggleCrawlForm } = useCrawlFormContext();
 
   // Check if neo4j_server is selected
   const isNeo4jServerSelected = mcpValues?.includes('neo4j_server') || false;
 
   // Handler for opening the form
   const handleRunLGOldWebsiteCrawl = useCallback(() => {
-    if (onToggleForm) {
-      onToggleForm();
-    }
-  }, [onToggleForm]);
+    handleToggleCrawlForm();
+  }, [handleToggleCrawlForm]);
 
   if (!isNeo4jServerSelected) {
     return null;

@@ -4,6 +4,8 @@ import { CSSTransition } from 'react-transition-group';
 import type { TMessage } from 'librechat-data-provider';
 import { useScreenshot, useMessageScrolling, useLocalize } from '~/hooks';
 import ScrollToBottom from '~/components/Messages/ScrollToBottom';
+import CrawlOldWebsiteForm from '../Input/CrawlOldWebsiteForm';
+import { useCrawlFormContext } from '../CrawlFormContext';
 import MultiMessage from './MultiMessage';
 import { cn } from '~/utils';
 import store from '~/store';
@@ -18,6 +20,9 @@ export default function MessagesView({
   const { screenshotTargetRef } = useScreenshot();
   const scrollButtonPreference = useRecoilValue(store.showScrollButton);
   const [currentEditId, setCurrentEditId] = useState<number | string | null>(-1);
+
+  // Get form state from context
+  const { isCrawlFormVisible, handleCloseCrawlForm, handleSubmitCrawl } = useCrawlFormContext();
 
   const {
     conversation,
@@ -72,6 +77,16 @@ export default function MessagesView({
                 className="group h-0 w-full flex-shrink-0"
                 ref={messagesEndRef}
               />
+              {/* Crawl Form - appears right after messages-end */}
+              {isCrawlFormVisible && (
+                <div className="px-4 py-2">
+                  <CrawlOldWebsiteForm
+                    isVisible={isCrawlFormVisible}
+                    onClose={handleCloseCrawlForm}
+                    onSubmit={handleSubmitCrawl}
+                  />
+                </div>
+              )}
             </div>
           </div>
 
