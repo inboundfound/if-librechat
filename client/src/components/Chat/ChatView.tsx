@@ -1,4 +1,4 @@
-import { memo, useCallback } from 'react';
+import { memo, useCallback, useState } from 'react';
 import { useRecoilValue } from 'recoil';
 import { useForm } from 'react-hook-form';
 import { Spinner } from '@librechat/client';
@@ -14,6 +14,8 @@ import MessagesView from './Messages/MessagesView';
 import Presentation from './Presentation';
 import { buildTree, cn } from '~/utils';
 import ChatForm from './Input/ChatForm';
+import { CrawlFormProvider } from './CrawlFormContext';
+
 import Landing from './Landing';
 import Header from './Header';
 import Footer from './Footer';
@@ -22,7 +24,7 @@ import store from '~/store';
 function LoadingSpinner() {
   return (
     <div className="relative flex-1 overflow-hidden overflow-y-auto">
-      <div className="relative flex h-full items-center justify-center">
+      <div className="relative flex items-center justify-center h-full">
         <Spinner className="text-text-primary" />
       </div>
     </div>
@@ -75,39 +77,41 @@ function ChatView({ index = 0 }: { index?: number }) {
   }
 
   return (
-    <ChatFormProvider {...methods}>
-      <ChatContext.Provider value={chatHelpers}>
-        <AddedChatContext.Provider value={addedChatHelpers}>
-          <Presentation>
-            <div className="flex h-full w-full flex-col">
-              {!isLoading && <Header />}
-              <>
-                <div
-                  className={cn(
-                    'flex flex-col',
-                    isLandingPage
-                      ? 'flex-1 items-center justify-end sm:justify-center'
-                      : 'h-full overflow-y-auto',
-                  )}
-                >
-                  {content}
+    <CrawlFormProvider>
+      <ChatFormProvider {...methods}>
+        <ChatContext.Provider value={chatHelpers}>
+          <AddedChatContext.Provider value={addedChatHelpers}>
+            <Presentation>
+              <div className="flex flex-col w-full h-full">
+                {!isLoading && <Header />}
+                <>
                   <div
                     className={cn(
-                      'w-full',
+                      'flex flex-col',
+                      isLandingPage
+                        ? 'flex-1 items-center justify-end sm:justify-center'
+                        : 'h-full overflow-y-auto',
+                    )}
+                  >
+                    {content}
+                  </div>
+                  <div
+                    className={cn(
+                      'w-full flex-shrink-0',
                       isLandingPage && 'max-w-3xl transition-all duration-200 xl:max-w-4xl',
                     )}
                   >
                     <ChatForm index={index} />
                     {isLandingPage ? <ConversationStarters /> : <Footer />}
                   </div>
-                </div>
-                {isLandingPage && <Footer />}
-              </>
-            </div>
-          </Presentation>
-        </AddedChatContext.Provider>
-      </ChatContext.Provider>
-    </ChatFormProvider>
+                  {isLandingPage && <Footer />}
+                </>
+              </div>
+            </Presentation>
+          </AddedChatContext.Provider>
+        </ChatContext.Provider>
+      </ChatFormProvider>
+    </CrawlFormProvider>
   );
 }
 
