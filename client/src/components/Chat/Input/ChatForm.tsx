@@ -31,8 +31,6 @@ import StopButton from './StopButton';
 import SendButton from './SendButton';
 import EditBadges from './EditBadges';
 import BadgeRow from './BadgeRow';
-import LGWebsiteCrawlButton from './LGWebsiteCrawlButton';
-import CrawlOldWebsiteForm, { CrawlFormData } from './CrawlOldWebsiteForm';
 import Mention from './Mention';
 import store from '~/store';
 
@@ -62,7 +60,6 @@ const ChatForm = memo(({ index = 0 }: { index?: number }) => {
   const [showMentionPopover, setShowMentionPopover] = useRecoilState(
     store.showMentionPopoverFamily(index),
   );
-  const [isCrawlFormVisible, setIsCrawlFormVisible] = useState(false);
 
   const { requiresKey } = useRequiresKey();
   const methods = useChatFormContext();
@@ -123,22 +120,6 @@ const ChatForm = memo(({ index = 0 }: { index?: number }) => {
       setIsCollapsed(false);
     }
   }, [isCollapsed]);
-
-  const handleToggleCrawlForm = useCallback(() => {
-    setIsCrawlFormVisible(prev => !prev);
-  }, []);
-
-  const handleCloseCrawlForm = useCallback(() => {
-    setIsCrawlFormVisible(false);
-  }, []);
-
-  const handleSubmitCrawl = useCallback((formData: CrawlFormData) => {
-    // TODO: Implement the actual crawl functionality
-    console.log('Running LG Old Website Crawl with data:', formData);
-    // This is where you would implement the actual crawl logic
-    // For now, just log to console
-    setIsCrawlFormVisible(false);
-  }, []);
 
   useAutoSave({
     files,
@@ -236,11 +217,6 @@ const ChatForm = memo(({ index = 0 }: { index?: number }) => {
       )}
     >
       <div className="relative flex h-full flex-1 items-stretch md:flex-col">
-        <CrawlOldWebsiteForm
-          isVisible={isCrawlFormVisible}
-          onClose={handleCloseCrawlForm}
-          onSubmit={handleSubmitCrawl}
-        />
         <div className={cn('flex w-full items-center', isRTL && 'flex-row-reverse')}>
           {showPlusPopover && !isAssistantsEndpoint(endpoint) && (
             <Mention
@@ -318,7 +294,6 @@ const ChatForm = memo(({ index = 0 }: { index?: number }) => {
                 </div>
               </div>
             )}
-            <LGWebsiteCrawlButton onToggleForm={handleToggleCrawlForm} />
             <div
               className={cn(
                 'items-between flex gap-2 pb-2',
