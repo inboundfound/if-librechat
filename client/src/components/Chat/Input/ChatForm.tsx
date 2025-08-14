@@ -31,7 +31,6 @@ import StopButton from './StopButton';
 import SendButton from './SendButton';
 import EditBadges from './EditBadges';
 import BadgeRow from './BadgeRow';
-import LGWebsiteCrawlButton from './LGWebsiteCrawlButton';
 import Mention from './Mention';
 import store from '~/store';
 import { isChatBlockedState } from '~/store/crawlForm';
@@ -302,7 +301,6 @@ const ChatForm = memo(({ index = 0 }: { index?: number }) => {
                 </div>
               </div>
             )}
-            <LGWebsiteCrawlButton />
             <div
               className={cn(
                 'items-between flex gap-2 pb-2',
