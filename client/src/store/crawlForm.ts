@@ -1,4 +1,5 @@
 import { atom } from 'recoil';
+import { atomWithLocalStorage } from './utils';
 
 interface CrawlFormState {
   isVisible: boolean;
@@ -18,19 +19,23 @@ interface CrawlFormState {
   };
 }
 
+// Generic form data interface
+interface FormData {
+  [key: string]: string | boolean;
+}
+
 // Store submitted forms by their unique identifier (message content hash)
-export const submittedFormsState = atom<Record<string, {
+export const submittedFormsState = atomWithLocalStorage<Record<string, {
   isSubmitted: boolean;
-  submittedData?: {
-    website: string;
-    launchDate: string;
-    description: string;
-    websiteLabel?: string;
-  };
-}>>({
-  key: 'submittedFormsState',
-  default: {},
-});
+  isCancelled?: boolean;
+  toolName?: string;
+  serverName?: string;
+  requestId?: string;
+  options?: any[];
+  output?: string;
+  formType?: string;
+  submittedData?: FormData;
+}>>('submittedFormsState', {});
 
 export const crawlFormState = atom<CrawlFormState>({
   key: 'crawlFormState',
@@ -41,7 +46,4 @@ export const crawlFormState = atom<CrawlFormState>({
 });
 
 // Store chat blocking state by conversation ID
-export const isChatBlockedState = atom<Record<string, boolean>>({
-  key: 'isChatBlockedState',
-  default: {},
-});
+export const isChatBlockedState = atomWithLocalStorage<Record<string, boolean>>('isChatBlockedState', {});
