@@ -35,6 +35,7 @@ import BadgeRow from './BadgeRow';
 import Mention from './Mention';
 
 import store from '~/store';
+import { isChatBlockedState } from '~/store/crawlForm';
 
 const ChatForm = memo(({ index = 0 }: { index?: number }) => {
   const submitButtonRef = useRef<HTMLButtonElement>(null);
@@ -62,6 +63,7 @@ const ChatForm = memo(({ index = 0 }: { index?: number }) => {
   const [showMentionPopover, setShowMentionPopover] = useRecoilState(
     store.showMentionPopoverFamily(index),
   );
+  const [isCrawlFormVisible, setIsCrawlFormVisible] = useState(false);
 
   const { requiresKey } = useRequiresKey();
   const methods = useChatFormContext();
@@ -95,6 +97,11 @@ const ChatForm = memo(({ index = 0 }: { index?: number }) => {
     () => conversation?.conversationId ?? Constants.NEW_CONVO,
     [conversation?.conversationId],
   );
+  // Check if chat is blocked for this specific conversation
+  const chatBlockedState = useRecoilValue(isChatBlockedState);
+  const isChatBlocked = useMemo(() => {
+    return chatBlockedState[conversationId] || false;
+  }, [chatBlockedState, conversationId]);
 
   const isRTL = useMemo(
     () => (chatDirection != null ? chatDirection?.toLowerCase() === 'rtl' : false),

@@ -1,3 +1,4 @@
+const axios = require('axios');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { webcrypto } = require('node:crypto');
@@ -374,6 +375,49 @@ const setAuthTokens = async (userId, res, sessionId = null) => {
       session = result.session;
       refreshToken = result.refreshToken;
       refreshTokenExpires = session.expiration.getTime();
+      console.log('token data', result)
+    }
+
+    // Get LG auth token only if LG_GRAPHQL_ENDPOINT is configured
+    if (process.env.LG_GRAPHQL_ENDPOINT) {
+      console.log('lg graphql endpoint available', process.env.LG_GRAPHQL_ENDPOINT);
+      const lgAuthData = await getCustomAuthToken(token, process.env.LG_GRAPHQL_ENDPOINT);
+      if (lgAuthData && lgAuthData.token) {
+        logger.debug('[setAuthTokens] Setting LG auth token cookie');
+        res.cookie('lgAuthToken', lgAuthData.token, {
+          expires: new Date(refreshTokenExpires),
+          httpOnly: true,
+          secure: isProduction,
+          sameSite: 'strict',
+        });
+        res.cookie('lg_token_provider', 'lg_auth', {
+          expires: new Date(refreshTokenExpires),
+          httpOnly: true,
+          secure: isProduction,
+          sameSite: 'strict',
+        });
+      }
+      console.log('lg auth token', lgAuthData);
+    }
+    if (process.env.PM_GRAPHQL_ENDPOINT) {
+      console.log('pm graphql endpoint available', process.env.PM_GRAPHQL_ENDPOINT);
+      const pmAuthData = await getCustomAuthToken(token, process.env.PM_GRAPHQL_ENDPOINT);
+      if (pmAuthData && pmAuthData.token) {
+        logger.debug('[setAuthTokens] Setting PM auth token cookie');
+        res.cookie('pmAuthToken', pmAuthData.token, {
+          expires: new Date(refreshTokenExpires),
+          httpOnly: true,
+          secure: isProduction,
+          sameSite: 'strict',
+        });
+        res.cookie('pm_token_provider', 'pm_auth', {
+          expires: new Date(refreshTokenExpires),
+          httpOnly: true,
+          secure: isProduction,
+          sameSite: 'strict',
+        });
+      }
+      console.log('pm auth token', pmAuthData);
     }
 
     res.cookie('refreshToken', refreshToken, {
@@ -513,6 +557,34 @@ const generateShortLivedToken = (userId, expireIn = '5m') => {
   });
 };
 
+const getCustomAuthToken = async (token, baseUrl) => {
+  try {
+    const response = await axios.post(`${baseUrl}/mcp-auth/token`, {}, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    logger.debug('[getCustomAuthToken] Successfully retrieved custom auth token');
+    return response.data;
+  } catch (error) {
+    // Check if the error response contains "User not found"
+    if (error.response && error.response.data) {
+      const errorData = error.response.data;
+      if (errorData.message === "User not found" && 
+          errorData.error === "Bad Request" && 
+          errorData.statusCode === 400) {
+        logger.warn('[getCustomAuthToken] User not found error received:', errorData);
+      }
+    }
+    
+    logger.error('[getCustomAuthToken] Error retrieving custom auth token:', error.message);
+    // Don't throw error to avoid breaking the main auth flow
+    return null;
+  }
+}
+
 module.exports = {
   logoutUser,
   verifyEmail,
@@ -523,4 +595,5 @@ module.exports = {
   requestPasswordReset,
   resendVerificationEmail,
   generateShortLivedToken,
+  getCustomAuthToken,
 };

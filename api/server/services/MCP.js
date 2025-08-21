@@ -14,6 +14,7 @@ const { findToken, createToken, updateToken } = require('~/models');
 const { getMCPManager, getFlowStateManager } = require('~/config');
 const { getCachedTools, loadCustomConfig } = require('./Config');
 const { getLogStores } = require('~/cache');
+const cookies = require('cookie');
 
 /**
  * @param {object} params
@@ -132,6 +133,27 @@ async function createMCPTool({ req, res, toolKey, provider: _provider }) {
     throw new Error(`User ID not found on request. Cannot create tool for ${toolKey}.`);
   }
 
+  // Get MCP server configuration to check for customJWTAuth
+  const customConfig = await loadCustomConfig();
+  const serverConfig = customConfig?.mcpServers?.[serverName];
+  let extractedJWTToken = null;
+  
+  if (serverConfig?.customJWTAuth) {
+    // Extract the specified cookie from the request
+    const cookieHeader = req.headers.cookie;
+    if (cookieHeader) {
+      const parsedCookies = cookies.parse(cookieHeader);
+      extractedJWTToken = parsedCookies[serverConfig.customJWTAuth];
+      if (extractedJWTToken) {
+        logger.debug(`[MCP][${serverName}] Extracted JWT token from cookie: ${serverConfig.customJWTAuth}`);
+      } else {
+        logger.warn(`[MCP][${serverName}] Cookie ${serverConfig.customJWTAuth} not found in request`);
+      }
+    } else {
+      logger.warn(`[MCP][${serverName}] No cookies found in request for customJWTAuth`);
+    }
+  }
+
   /** @type {(toolArguments: Object | string, config?: GraphRunnableConfig) => Promise<unknown>} */
   const _call = async (toolArguments, config) => {
     const userId = config?.configurable?.user?.id || config?.configurable?.user_id;
@@ -168,8 +190,15 @@ async function createMCPTool({ req, res, toolKey, provider: _provider }) {
         derivedSignal.addEventListener('abort', abortHandler, { once: true });
       }
 
-      const customUserVars =
+      const baseCustomUserVars =
         config?.configurable?.userMCPAuthMap?.[`${Constants.mcp_prefix}${serverName}`];
+
+      // Merge base customUserVars with extracted JWT token if available
+      const customUserVars = { ...baseCustomUserVars };
+      if (extractedJWTToken) {
+        customUserVars.Authorization = `Bearer ${extractedJWTToken}`;
+        logger.debug(`[MCP][${serverName}] Added Authorization header from ${serverConfig.customJWTAuth} cookie`);
+      }
 
       const result = await mcpManager.callTool({
         serverName,
