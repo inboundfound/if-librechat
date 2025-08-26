@@ -5,6 +5,7 @@ import { useRecoilState, useSetRecoilState } from 'recoil';
 import { crawlFormState, isChatBlockedState, submittedFormsState } from '~/store/crawlForm';
 import { useSubmitMessage } from '~/hooks';
 import CrawlForm from './CrawlForm';
+import CustomForm from './CustomForm';
 
 interface MCPToolDetectorProps {
   toolCall: any; // Tool call data
@@ -19,8 +20,8 @@ const MCP_TOOL_CONFIGS = {
     extractOptions: (output: string) => {
       try {
         // Parse the websites string format: "url1|id1,url2|id2,..."
-        // Capture everything after "websites::" until the end of the string
-        const websitesMatch = output.match(/websites::(.+)/);
+        // Capture everything after "websites::" until the end of the string or NOTE
+        const websitesMatch = output.match(/websites::(.+?)(?:\n|$)/);
         if (!websitesMatch) {
           console.log('No websites found in output');
           return [];
@@ -41,6 +42,9 @@ const MCP_TOOL_CONFIGS = {
             return null;
           }
           
+          // Clean up any extra text or newlines from the ID
+          const cleanId = id.split('\n')[0].split('\\n')[0].replace(/\\n/g, '');
+          
           // Extract domain name from URL for display
           let label = url;
           try {
@@ -54,7 +58,7 @@ const MCP_TOOL_CONFIGS = {
           return {
             label: label,
             value: url,
-            id: id
+            id: cleanId
           };
         }).filter(Boolean);
 
@@ -66,12 +70,54 @@ const MCP_TOOL_CONFIGS = {
       }
     }
   },
+  'render_custom_form': {
+    triggerForm: true,
+    formType: 'custom',
+    extractOptions: (output: string) => {
+      try {
+        // Parse the form fields string format: "label:value_type:|:label:value_type:|:..."
+        // Capture everything after "form_fields::" until the end of line or NOTE
+        const formFieldsMatch = output.match(/form_fields::(.+?)(?:\n|$)/);
+        if (!formFieldsMatch) {
+          console.log('No form fields found in output');
+          return [];
+        }
+
+        const formFieldsString = formFieldsMatch[1];
+        console.log('Raw form fields string:', formFieldsString);
+        console.log('Full output for debugging:', output);
+        
+        // Split by the new delimiter :|:
+        const fieldPairs = formFieldsString.split(':|:');
+        console.log('Field pairs:', fieldPairs);
+        console.log('Number of fields found:', fieldPairs.length);
+        
+        const options = fieldPairs.map(pair => {
+          const [label, valueType] = pair.split(':');
+          if (!label || !valueType) {
+            console.log('Invalid field pair:', pair);
+            return null;
+          }
+          
+          // Clean up any extra text or newlines from the value type
+          const cleanValueType = valueType.split('\n')[0].split('\\n')[0].replace(/\\n/g, '').trim();
+          
+          return {
+            label: label.trim(),
+            value: cleanValueType,
+            id: label.trim().toLowerCase().replace(/\s+/g, '_')
+          };
+        }).filter(Boolean);
+
+        console.log('Extracted form field options:', options);
+        return options;
+      } catch (e) {
+        console.error('Failed to parse form field options:', e);
+        return [];
+      }
+    }
+  },
   // Add more MCP tool configurations here
-  // 'another_tool': {
-  //   triggerForm: true,
-  //   formType: 'custom',
-  //   // ... other config
-  // }
 };
 
 export const MCPToolDetector: React.FC<MCPToolDetectorProps> = ({ toolCall, output }) => {
@@ -170,9 +216,10 @@ export const MCPToolDetector: React.FC<MCPToolDetectorProps> = ({ toolCall, outp
         ...prev,
         [formId]: {
           isSubmitted: false,
+          isCancelled: false,
           toolName: function_name,
           serverName,
-          requestId,
+          requestId: requestId || undefined,
           options,
           output,
           formType: toolConfig.formType,
@@ -239,35 +286,78 @@ export const MCPToolDetector: React.FC<MCPToolDetectorProps> = ({ toolCall, outp
       requestId,
     });
 
+    // Update form state to show cancelled
+    setSubmittedForms(prev => ({
+      ...prev,
+      [formId]: {
+        ...prev[formId],
+        isSubmitted: false,
+        isCancelled: true,
+      },
+    }));
+
     await submitMessage({ text: "I decided not to submit the form at this time. Let's continue our conversation." });
     setChatBlocked(prev => ({
       ...prev,
       [conversationId || 'no-conv']: false
     }));
-  }, [formId, function_name, submitMessage, setChatBlocked]);
+  }, [formId, function_name, submitMessage, setChatBlocked, setSubmittedForms]);
 
-  // If no tool config or already submitted, don't render anything
-  if (!toolConfig || thisFormState.isSubmitted) {
+  // If no tool config, don't render anything
+  if (!toolConfig) {
     return null;
   }
 
   // Render the appropriate form based on form type
   if (toolConfig.formType === 'crawl') {
     return (
-      <div className="my-4 rounded-xl border border-orange-400 bg-orange-50 dark:bg-orange-900/20 p-4 shadow-lg">
-        <div className="flex items-center gap-2 mb-4">
-          <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
-          <span className="text-sm font-medium text-orange-700 dark:text-orange-300">
-            Chat is disabled - Please complete the form below
-          </span>
-        </div>
+      <>
+        {!thisFormState.isSubmitted && !thisFormState.isCancelled && (
+          <div className="my-4 rounded-xl border border-orange-400 bg-orange-50 dark:bg-orange-900/20 p-4 shadow-lg">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
+              <span className="text-sm font-medium text-orange-700 dark:text-orange-300">
+                Chat is disabled - Please complete the form below
+              </span>
+            </div>
+          </div>
+        )}
         
         <CrawlForm
           onSubmit={handleFormSubmit}
           onCancel={handleFormCancel}
           websiteOptions={(thisFormState as any).options || []}
+          isSubmitted={thisFormState.isSubmitted}
+          isCancelled={thisFormState.isCancelled}
+          submittedData={thisFormState.submittedData as any}
         />
-      </div>
+      </>
+    );
+  }
+
+  if (toolConfig.formType === 'custom') {
+    return (
+      <>
+        {!thisFormState.isSubmitted && !thisFormState.isCancelled && (
+          <div className="my-4 rounded-xl border border-orange-400 bg-orange-50 dark:bg-orange-900/20 p-4 shadow-lg">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
+              <span className="text-sm font-medium text-orange-700 dark:text-orange-300">
+                Chat is disabled - Please complete the form below
+              </span>
+            </div>
+          </div>
+        )}
+        
+        <CustomForm
+          onSubmit={handleFormSubmit}
+          onCancel={handleFormCancel}
+          formFields={(thisFormState as any).options || []}
+          isSubmitted={thisFormState.isSubmitted}
+          isCancelled={thisFormState.isCancelled}
+          submittedData={thisFormState.submittedData}
+        />
+      </>
     );
   }
 

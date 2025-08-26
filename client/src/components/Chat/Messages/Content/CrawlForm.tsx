@@ -18,6 +18,7 @@ interface CrawlFormProps {
   onCancel?: () => void;
   websiteOptions?: WebsiteOption[];
   isSubmitted?: boolean;
+  isCancelled?: boolean;
   submittedData?: CrawlFormData & { websiteLabel?: string };
 }
 
@@ -26,6 +27,7 @@ const CrawlForm: React.FC<CrawlFormProps> = ({
   onCancel,
   websiteOptions = [],
   isSubmitted = false,
+  isCancelled = false,
   submittedData,
 }) => {
   const localize = useLocalize();
@@ -64,45 +66,89 @@ const CrawlForm: React.FC<CrawlFormProps> = ({
 
   const isValid = formData.website && formData.launchDate && formData.description;
 
-  // If form is submitted, show the submitted data
+  // If form is cancelled, show cancelled state
+  if (isCancelled) {
+    return (
+      <div className="my-4 rounded-xl border border-red-400 bg-red-50 p-4 shadow-lg dark:bg-red-900/20">
+        <div className="mb-4">
+          <div className="mb-2 flex items-center gap-2">
+            <div className="h-3 w-3 rounded-full bg-red-500"></div>
+            <h3 className="text-lg font-semibold text-red-800 dark:text-red-200">
+              ❌ Crawl Configuration Cancelled
+            </h3>
+          </div>
+          <p className="text-sm text-red-700 dark:text-red-300">
+            The crawl configuration form was cancelled.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // If form is submitted, show the form with disabled fields and green outline
   if (isSubmitted && submittedData) {
     return (
-      <div className="my-4 rounded-xl border border-green-400 bg-green-50 p-4 shadow-lg dark:bg-green-900/20">
+      <div className="my-4 rounded-xl border-2 border-green-500 bg-gray-800 p-4 shadow-lg">
         <div className="mb-4">
           <div className="mb-2 flex items-center gap-2">
             <div className="h-3 w-3 rounded-full bg-green-500"></div>
-            <h3 className="text-lg font-semibold text-green-800 dark:text-green-200">
+            <h3 className="text-lg font-semibold text-green-400">
               ✅ Crawl Configuration Submitted
             </h3>
           </div>
-          <p className="text-sm text-green-700 dark:text-green-300">
+          <p className="text-sm text-green-300">
             The crawl configuration has been submitted and processed.
           </p>
         </div>
 
-        <div className="space-y-3">
-          {/* Submitted Website */}
+        <div className="space-y-6">
+          {/* Website Field */}
           <div>
-            <Label className="mb-1 block text-sm font-medium text-text-primary">Website</Label>
-            <div className="w-full rounded-md border border-green-300 bg-green-100 px-3 py-2 text-text-primary dark:bg-green-800/30">
-              {submittedData.websiteLabel || submittedData.website}
-            </div>
+            <Label htmlFor="website" className="mb-2 block text-sm font-medium text-white">
+              Website
+            </Label>
+            {websiteOptions.length > 0 ? (
+              <div className="w-full rounded-md border border-green-500 bg-gray-700 px-3 py-2 text-white opacity-75">
+                {submittedData.websiteLabel || submittedData.website}
+              </div>
+            ) : (
+              <Input
+                id="website"
+                type="url"
+                value={submittedData.website}
+                className="w-full border-green-500 bg-gray-700 text-white opacity-75"
+                disabled
+              />
+            )}
           </div>
 
-          {/* Submitted Launch Date */}
+          {/* Launch Date Field */}
           <div>
-            <Label className="mb-1 block text-sm font-medium text-text-primary">Launch Date</Label>
-            <div className="w-full rounded-md border border-green-300 bg-green-100 px-3 py-2 text-text-primary dark:bg-green-800/30">
-              {new Date(submittedData.launchDate).toLocaleString()}
-            </div>
+            <Label htmlFor="launchDate" className="mb-2 block text-sm font-medium text-white">
+              Launch Date
+            </Label>
+            <Input
+              id="launchDate"
+              type="datetime-local"
+              value={submittedData.launchDate}
+              className="w-full border-green-500 bg-gray-700 text-white opacity-75"
+              disabled
+            />
           </div>
 
-          {/* Submitted Description */}
+          {/* Description Field */}
           <div>
-            <Label className="mb-1 block text-sm font-medium text-text-primary">Description</Label>
-            <div className="w-full whitespace-pre-wrap rounded-md border border-green-300 bg-green-100 px-3 py-2 text-text-primary dark:bg-green-800/30">
-              {submittedData.description}
-            </div>
+            <Label htmlFor="description" className="mb-2 block text-sm font-medium text-white">
+              Description
+            </Label>
+            <TextareaAutosize
+              id="description"
+              value={submittedData.description}
+              minRows={3}
+              maxRows={6}
+              className="w-full resize-none border-green-500 bg-gray-700 text-white opacity-75"
+              disabled
+            />
           </div>
         </div>
       </div>
