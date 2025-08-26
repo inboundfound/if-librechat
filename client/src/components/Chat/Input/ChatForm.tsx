@@ -18,6 +18,7 @@ import {
   useSubmitMessage,
   useFocusChatEffect,
 } from '~/hooks';
+import useLaunchGuardianGSC from '~/hooks/useLaunchGuardianGSC';
 import { mainTextareaId, BadgeItem } from '~/common';
 import AttachFileChat from './Files/AttachFileChat';
 import FileFormChat from './Files/FileFormChat';
@@ -32,6 +33,7 @@ import SendButton from './SendButton';
 import EditBadges from './EditBadges';
 import BadgeRow from './BadgeRow';
 import Mention from './Mention';
+
 import store from '~/store';
 import { isChatBlockedState } from '~/store/crawlForm';
 
@@ -74,6 +76,9 @@ const ChatForm = memo(({ index = 0 }: { index?: number }) => {
     newConversation,
     handleStopGenerating,
   } = useChatContext();
+
+  // Launch Guardian GSC integration (AI-driven)
+  const { triggerGSCForm, hasNeo4jServer } = useLaunchGuardianGSC();
   const {
     addedIndex,
     generateConversation,
@@ -137,6 +142,15 @@ const ChatForm = memo(({ index = 0 }: { index?: number }) => {
   });
 
   const { submitMessage, submitPrompt } = useSubmitMessage();
+
+  // Custom submit handler that checks for website optimization intent
+  // Handle manual Launch Guardian GSC trigger
+  const handleLaunchGuardianTrigger = useCallback(() => {
+    const success = triggerGSCForm('Manual Launch Guardian GSC Analysis Request');
+    if (!success) {
+      console.warn('Launch Guardian GSC: Cannot trigger - neo4j_server not available');
+    }
+  }, [triggerGSCForm]);
 
   const handleKeyUp = useHandleKeyUp({
     index,
@@ -208,6 +222,10 @@ const ChatForm = memo(({ index = 0 }: { index?: number }) => {
       ),
     [isCollapsed, isMoreThanThreeRows],
   );
+
+  // Show Launch Guardian form if website optimization intent is detected
+  // The AI-driven GSC form is now handled in MessageContent component
+  // No need for explicit form rendering here
 
   return (
     <form
@@ -299,6 +317,36 @@ const ChatForm = memo(({ index = 0 }: { index?: number }) => {
                     setIsCollapsed={setIsCollapsed}
                   />
                 </div>
+              </div>
+            )}
+            {/* Launch Guardian GSC Button - Separate Row */}
+            {hasNeo4jServer && (
+              <div className="flex px-5 py-2">
+                <button
+                  type="button"
+                  onClick={handleLaunchGuardianTrigger}
+                  disabled={disableInputs}
+                  className="flex items-center gap-2 rounded-lg bg-surface-secondary px-4 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-surface-hover focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  title="Launch Guardian GSC Data Analysis"
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="text-text-primary"
+                  >
+                    <path d="M3 3v18h18" />
+                    <path d="m19 9-5 5-4-4-3 3" />
+                    <circle cx="9" cy="9" r="1" />
+                    <circle cx="20" cy="4" r="1" />
+                  </svg>
+                  Launch Guardian GSC
+                </button>
               </div>
             )}
             <div

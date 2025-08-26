@@ -11,6 +11,7 @@ import CustomUserVarsSection from '~/components/MCP/CustomUserVarsSection';
 import BadgeRowProvider from '~/Providers/BadgeRowContext';
 import { useGetStartupConfig } from '~/data-provider';
 import MCPPanelSkeleton from './MCPPanelSkeleton';
+import Neo4jServerPanel from './Neo4jServerPanel';
 import { useLocalize } from '~/hooks';
 
 function MCPPanelContent() {
@@ -109,7 +110,14 @@ function MCPPanelContent() {
   }
 
   if (selectedServerNameForEditing) {
-    // Editing View
+    // Check if this is the neo4j_server - use custom panel
+    if (selectedServerNameForEditing === 'neo4j_server') {
+      return (
+        <Neo4jServerPanel serverName={selectedServerNameForEditing} onBack={handleGoBackToList} />
+      );
+    }
+
+    // Editing View for other servers
     const serverBeingEdited = mcpServerDefinitions.find(
       (s) => s.serverName === selectedServerNameForEditing,
     );
