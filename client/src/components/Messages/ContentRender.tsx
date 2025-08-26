@@ -1,5 +1,5 @@
 import { useRecoilValue } from 'recoil';
-import { useCallback, useMemo, memo, useState, useEffect } from 'react';
+import { useCallback, useMemo, memo } from 'react';
 import type { TMessage, TMessageContentParts } from 'librechat-data-provider';
 import type { TMessageProps, TMessageIcon } from '~/common';
 import ContentParts from '~/components/Chat/Messages/Content/ContentParts';
@@ -11,9 +11,6 @@ import { useAttachments, useMessageActions } from '~/hooks';
 import SubRow from '~/components/Chat/Messages/SubRow';
 import { cn, logger } from '~/utils';
 import store from '~/store';
-import { parseAIResponseForGSC } from '~/utils/aiGSCDetection';
-import LaunchGuardianGSCTool from '~/components/Chat/Messages/Content/LaunchGuardianGSCTool';
-import useLaunchGuardianGSC from '~/hooks/useLaunchGuardianGSC';
 
 type ContentRenderProps = {
   message?: TMessage;
@@ -65,129 +62,6 @@ const ContentRender = memo(
     });
     const maximizeChatSpace = useRecoilValue(store.maximizeChatSpace);
     const fontSize = useRecoilValue(store.fontSize);
-
-    // AI-driven GSC detection state
-    const [showGSCTool, setShowGSCTool] = useState(false);
-    const [gscRequestContext, setGscRequestContext] = useState('');
-    const [cleanedText, setCleanedText] = useState('');
-    const { triggerGSCForm } = useLaunchGuardianGSC();
-
-    // Extract text content from message (AI messages use content array, user messages use text)
-    const extractMessageText = useCallback((message: TMessage | undefined): string => {
-      if (!message) return '';
-
-      // Try text property first (user messages)
-      if (message.text) {
-        return message.text;
-      }
-
-      // Try content array (AI messages)
-      if (Array.isArray(message.content)) {
-        return message.content
-          .map((part: any) => {
-            if (typeof part === 'string') return part;
-            if (part?.text) return part.text;
-            if (part?.content) return part.content;
-            return '';
-          })
-          .join(' ')
-          .trim();
-      }
-
-      // Try content as string
-      if (typeof message.content === 'string') {
-        return message.content;
-      }
-
-      return '';
-    }, []);
-
-    const messageText = extractMessageText(msg);
-
-    // Debug: Log ContentRender processing
-    console.log('🟠 ContentRender PROCESSING MESSAGE', {
-      messageId: msg?.messageId,
-      isCreatedByUser: msg?.isCreatedByUser,
-      endpoint: msg?.endpoint,
-      textPreview: messageText.substring(0, 200),
-      hasText: !!messageText,
-      textLength: messageText.length,
-      messageType: msg?.isCreatedByUser ? 'USER' : 'AI',
-      isCard,
-      isMultiMessage,
-      rawText: msg?.text,
-      rawContent: Array.isArray(msg?.content)
-        ? msg?.content.length + ' parts'
-        : typeof msg?.content,
-      timestamp: new Date().toISOString(),
-    });
-
-    // Debug: Log extracted message text details
-    console.log('🟠 ContentRender TEXT EXTRACTION DEBUG', {
-      messageId: msg?.messageId,
-      extractedText: messageText,
-      extractedTextLength: messageText.length,
-      hasExtractedText: !!messageText,
-      messageHasText: !!msg?.text,
-      messageHasContent: !!msg?.content,
-      contentType: typeof msg?.content,
-      contentIsArray: Array.isArray(msg?.content),
-      contentLength: Array.isArray(msg?.content) ? msg?.content.length : 'N/A',
-    });
-
-    // AI-driven GSC detection logic
-    useEffect(() => {
-      console.log('🚨 ContentRender GSC DETECTION USEEFFECT TRIGGERED', {
-        messageId: msg?.messageId,
-        messageTextLength: messageText.length,
-        isCreatedByUser: msg?.isCreatedByUser,
-        triggerGSCFormExists: !!triggerGSCForm,
-        extractMessageTextExists: !!extractMessageText,
-      });
-      
-      const text = messageText;
-
-      console.log('🟠 ContentRender GSC DETECTION', {
-        messageId: msg?.messageId,
-        isCreatedByUser: msg?.isCreatedByUser,
-        messageType: msg?.isCreatedByUser ? 'USER' : 'AI',
-        textPreview: text.substring(0, 200),
-        textLength: text.length,
-        hasText: !!text,
-        timestamp: new Date().toISOString(),
-      });
-
-      // Only process AI messages
-      if (msg?.isCreatedByUser || !text) {
-        console.log('🟠 ContentRender: Skipping GSC detection (user message or no text)');
-        setShowGSCTool(false);
-        setCleanedText(text);
-        return;
-      }
-
-      console.log('🟠 ContentRender: Processing AI message for GSC detection');
-
-      // Parse AI response for GSC detection
-      const gscDetection = parseAIResponseForGSC(text);
-
-      console.log('🟠 ContentRender GSC DETECTION RESULT', {
-        shouldShowTool: gscDetection.shouldShowTool,
-        requestContext: gscDetection.requestContext,
-        cleanedResponse: gscDetection.cleanedResponse?.substring(0, 200),
-        messageId: msg?.messageId,
-      });
-
-      if (gscDetection.shouldShowTool) {
-        console.log('🟠 ContentRender: TRIGGERING GSC TOOL!');
-        setShowGSCTool(true);
-        setGscRequestContext(gscDetection.requestContext || '');
-        triggerGSCForm();
-      } else {
-        setShowGSCTool(false);
-      }
-
-      setCleanedText(gscDetection.cleanedResponse || text);
-    }, [messageText, msg?.isCreatedByUser, msg?.messageId, triggerGSCForm]);
 
     const handleRegenerateMessage = useCallback(() => regenerateMessage(), [regenerateMessage]);
     const isLast = useMemo(
@@ -270,11 +144,11 @@ const ContentRender = memo(
         tabIndex={showCardRender ? 0 : undefined}
       >
         {isLatestCard && (
-          <div className="absolute right-0 top-0 m-2 h-3 w-3 rounded-full bg-text-primary" />
+          <div className="absolute top-0 right-0 w-3 h-3 m-2 rounded-full bg-text-primary" />
         )}
 
-        <div className="relative flex flex-shrink-0 flex-col items-center">
-          <div className="flex h-6 w-6 items-center justify-center overflow-hidden rounded-full">
+        <div className="relative flex flex-col items-center flex-shrink-0">
+          <div className="flex items-center justify-center w-6 h-6 overflow-hidden rounded-full">
             <MessageIcon iconData={iconData} assistant={assistant} agent={agent} />
           </div>
         </div>
@@ -288,7 +162,7 @@ const ContentRender = memo(
           <h2 className={cn('select-none font-semibold', fontSize)}>{messageLabel}</h2>
 
           <div className="flex flex-col gap-1">
-            <div className="flex max-w-full flex-grow flex-col gap-0">
+            <div className="flex flex-col flex-grow max-w-full gap-0">
               <ContentParts
                 edit={edit}
                 isLast={isLast}
@@ -303,19 +177,6 @@ const ContentRender = memo(
                 conversationId={conversation?.conversationId}
                 content={msg.content as Array<TMessageContentParts | undefined>}
               />
-
-              {/* AI-driven Launch Guardian GSC Tool */}
-              {showGSCTool && !msg.isCreatedByUser && (
-                <div className="mt-4">
-                  <LaunchGuardianGSCTool
-                    requestContext={gscRequestContext}
-                    onClose={() => {
-                      console.log('🟠 ContentRender: GSC Tool closed');
-                      setShowGSCTool(false);
-                    }}
-                  />
-                </div>
-              )}
             </div>
 
             {(isSubmittingFamily || isSubmitting) && !(msg.children?.length ?? 0) ? (
