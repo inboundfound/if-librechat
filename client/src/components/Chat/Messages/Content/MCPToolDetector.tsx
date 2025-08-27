@@ -268,15 +268,46 @@ export const MCPToolDetector: React.FC<MCPToolDetectorProps> = ({ toolCall, outp
       },
     }));
 
-    // Submit to chat
-    const message = `I have submitted the ${toolConfig?.formType || 'form'} with the following configuration:\n\n🌐 **Website:** ${data.website}\n📅 **Launch Date:** ${new Date(data.launchDate).toLocaleString()}\n📝 **Description:** ${data.description}\n\nPlease proceed based on these details.`;
+    let message: string;
+
+    if (toolConfig?.formType === 'crawl') {
+      // Handle crawl form submission with specific field mapping
+      const websiteLabel = (thisFormState as any).options?.find((opt: any) => opt.value === data.website)?.label || data.website;
+      const launchDate = data.launchDate ? new Date(data.launchDate).toLocaleString() : 'Not specified';
+      
+      message = `I have submitted the crawl configuration with the following details:\n\n🌐 **Website:** ${websiteLabel}\n📅 **Launch Date:** ${launchDate}\n📝 **Description:** ${data.description || 'Not specified'}\n\nPlease proceed with the crawl based on these details.`;
+    } else {
+      // Handle custom form submission with dynamic field generation
+      const formFields = (thisFormState as any).options || [];
+      const fieldDetails = formFields.map((field: any) => {
+        const value = data[field.id];
+        let displayValue = value;
+        
+        // Handle boolean values
+        if (field.value === 'bool') {
+          displayValue = value ? 'Yes' : 'No';
+        }
+        // Handle date values if they exist
+        else if (value && typeof value === 'string' && value.match(/^\d{4}-\d{2}-\d{2}/)) {
+          try {
+            displayValue = new Date(value).toLocaleString();
+          } catch {
+            displayValue = value;
+          }
+        }
+        
+        return `**${field.label}:** ${displayValue}`;
+      }).join('\n');
+
+      message = `I have submitted the ${toolConfig?.formType || 'form'} with the following configuration:\n\n${fieldDetails}\n\nPlease proceed based on these details.`;
+    }
     
     await submitMessage({ text: message });
     setChatBlocked(prev => ({
       ...prev,
       [conversationId || 'no-conv']: false
     }));
-  }, [formId, function_name, toolConfig?.formType, setSubmittedForms, submitMessage, setChatBlocked]);
+  }, [formId, function_name, toolConfig?.formType, setSubmittedForms, submitMessage, setChatBlocked, thisFormState]);
 
   // Handle form cancellation
   const handleFormCancel = React.useCallback(async () => {
