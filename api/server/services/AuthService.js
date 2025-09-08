@@ -379,45 +379,25 @@ const setAuthTokens = async (userId, res, sessionId = null) => {
     }
 
     // Get LG auth token only if LG_GRAPHQL_ENDPOINT is configured
-    if (process.env.LG_GRAPHQL_ENDPOINT) {
-      console.log('lg graphql endpoint available', process.env.LG_GRAPHQL_ENDPOINT);
-      const lgAuthData = await getCustomAuthToken(token, process.env.LG_GRAPHQL_ENDPOINT);
-      if (lgAuthData && lgAuthData.token) {
+    if (process.env.UTILITYBAR_GRAPHQL_URL) {
+      console.log('lg graphql endpoint available', process.env.UTILITYBAR_GRAPHQL_URL);
+      const authData = await getCustomAuthToken(token, process.env.UTILITYBAR_GRAPHQL_URL);
+      if (authData && authData.token) {
         logger.debug('[setAuthTokens] Setting LG auth token cookie');
-        res.cookie('lgAuthToken', lgAuthData.token, {
+        res.cookie('ubAuthToken', authData.token, {
           expires: new Date(refreshTokenExpires),
           httpOnly: true,
           secure: isProduction,
           sameSite: 'strict',
         });
-        res.cookie('lg_token_provider', 'lg_auth', {
-          expires: new Date(refreshTokenExpires),
-          httpOnly: true,
-          secure: isProduction,
-          sameSite: 'strict',
-        });
-      }
-      console.log('lg auth token', lgAuthData);
-    }
-    if (process.env.PM_GRAPHQL_ENDPOINT) {
-      console.log('pm graphql endpoint available', process.env.PM_GRAPHQL_ENDPOINT);
-      const pmAuthData = await getCustomAuthToken(token, process.env.PM_GRAPHQL_ENDPOINT);
-      if (pmAuthData && pmAuthData.token) {
-        logger.debug('[setAuthTokens] Setting PM auth token cookie');
-        res.cookie('pmAuthToken', pmAuthData.token, {
-          expires: new Date(refreshTokenExpires),
-          httpOnly: true,
-          secure: isProduction,
-          sameSite: 'strict',
-        });
-        res.cookie('pm_token_provider', 'pm_auth', {
+        res.cookie('ub_token_provider', 'ub_auth', {
           expires: new Date(refreshTokenExpires),
           httpOnly: true,
           secure: isProduction,
           sameSite: 'strict',
         });
       }
-      console.log('pm auth token', pmAuthData);
+      console.log('ub auth token', authData);
     }
 
     res.cookie('refreshToken', refreshToken, {
