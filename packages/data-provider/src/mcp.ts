@@ -58,7 +58,7 @@ const BaseOptionsSchema = z.object({
   /**
    * Custom JWT authentication from cookies.
    * Specify the cookie name to extract and pass as Authorization header.
-   * Example: "lgAuthToken" will extract the lgAuthToken cookie
+   * Example: "ubAuthToken" will extract the ubAuthToken cookie
    * and make it available as a custom user variable for authorization.
    */
   customJWTAuth: z.string().optional(),
